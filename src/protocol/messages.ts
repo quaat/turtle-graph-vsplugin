@@ -4,7 +4,7 @@ export const PROTOCOL_VERSION = 1;
 const MAX_TEXT_LENGTH = 1_000_000;
 const MAX_EXPORT_PAYLOAD = 15_000_000;
 
-export interface WebviewConfig { maxInitialNodes: number; }
+export interface WebviewConfig { maxInitialNodes: number; layout: 'cose' | 'grid' | 'circle' | 'breadthfirst' | 'concentric'; }
 export interface GraphMessage { type: 'graph'; version: number; model: GraphModel; sourceFile?: string; config: WebviewConfig; }
 export interface ErrorMessage { type: 'error'; version: number; message: string; errors: ParseError[]; }
 export type ExtensionToWebview = GraphMessage | ErrorMessage;

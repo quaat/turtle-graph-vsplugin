@@ -8,7 +8,7 @@ export interface ViewerConfig {
   preferredLabels: string[];
   maxFileBytes: number;
   maxTriples: number;
-  layout: string;
+  layout: GraphLayout;
 }
 
 export interface RawViewerConfig {
@@ -23,6 +23,15 @@ export interface RawViewerConfig {
 export const DEFAULT_MAX_INITIAL_NODES = 500;
 export const DEFAULT_MAX_FILE_BYTES = 2_000_000;
 export const DEFAULT_MAX_TRIPLES = 20_000;
+export const SUPPORTED_LAYOUTS = ['cose', 'grid', 'circle', 'breadthfirst', 'concentric'] as const;
+export type GraphLayout = (typeof SUPPORTED_LAYOUTS)[number];
+export const DEFAULT_LAYOUT: GraphLayout = 'cose';
+
+export function normalizeLayout(value: unknown): GraphLayout {
+  if (typeof value !== 'string') return DEFAULT_LAYOUT;
+  const normalized = value.trim().toLowerCase();
+  return (SUPPORTED_LAYOUTS as readonly string[]).includes(normalized) ? (normalized as GraphLayout) : DEFAULT_LAYOUT;
+}
 
 /** Expand a CURIE (e.g. `rdfs:label`) to an IRI using the given prefixes; pass IRIs through. */
 export function expandCurie(value: string, prefixes: PrefixMap = {}): string {
@@ -50,7 +59,7 @@ export function normalizeConfig(raw: RawViewerConfig = {}, prefixes: PrefixMap =
 
   const maxFileBytes = typeof raw.maxFileBytes === 'number' && Number.isFinite(raw.maxFileBytes) ? Math.max(1, Math.floor(raw.maxFileBytes)) : DEFAULT_MAX_FILE_BYTES;
   const maxTriples = typeof raw.maxTriples === 'number' && Number.isFinite(raw.maxTriples) ? Math.max(1, Math.floor(raw.maxTriples)) : DEFAULT_MAX_TRIPLES;
-  const layout = typeof raw.layout === 'string' && raw.layout.trim() ? raw.layout : 'cose';
+  const layout = normalizeLayout(raw.layout);
 
   const curies =
     Array.isArray(raw.preferredLabels) && raw.preferredLabels.length > 0

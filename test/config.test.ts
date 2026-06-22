@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_MAX_INITIAL_NODES, expandCurie, normalizeConfig } from '../src/rdf/config';
+import { DEFAULT_MAX_INITIAL_NODES, expandCurie, normalizeConfig, normalizeLayout, SUPPORTED_LAYOUTS } from '../src/rdf/config';
 import { DCTERMS_TITLE, RDFS_LABEL, SKOS_PREFLABEL } from '../src/rdf/vocab';
 
 describe('normalizeConfig', () => {
@@ -23,6 +23,15 @@ describe('normalizeConfig', () => {
 
   it('falls back to true for a non-boolean refreshOnChange', () => {
     expect(normalizeConfig({ refreshOnChange: 'yes' as unknown }).refreshOnChange).toBe(true);
+  });
+
+  it('normalizes layout values to safe Cytoscape layout names', () => {
+    for (const layout of SUPPORTED_LAYOUTS) {
+      expect(normalizeConfig({ layout }).layout).toBe(layout);
+      expect(normalizeLayout(layout.toUpperCase())).toBe(layout);
+    }
+    expect(normalizeConfig({ layout: 'evil' }).layout).toBe('cose');
+    expect(normalizeConfig({ layout: '' }).layout).toBe('cose');
   });
 
   it('expands custom CURIE preferred labels', () => {

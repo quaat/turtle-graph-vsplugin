@@ -7,6 +7,7 @@ import { isSupportedRdfDocument, resolveRdfSyntax } from '../rdf/syntax';
 import { isWebviewToExtension, type RevealTarget } from '../protocol/messages';
 import { findStatementRef, findTokenLine } from '../rdf/sourceLocator';
 import { localName } from '../rdf/compactIri';
+import { decodePngDataUri } from '../exportPayload';
 import type { ExtensionToWebview } from '../protocol/messages';
 
 const CHANGE_DEBOUNCE_MS = 300;
@@ -86,11 +87,14 @@ export class PreviewManager {
     const bytes = Buffer.byteLength(document.getText(), 'utf8');
     if (bytes > config.maxFileBytes) {
       const answer = await vscode.window.showWarningMessage(
-        `Turtle Graph: ${document.fileName} is ${bytes.toLocaleString()} bytes, above the configured ${config.maxFileBytes.toLocaleString()} byte limit. Continue parsing?`,
+        `Turtle Graph: ${document.fileName} is ${bytes.toLocaleString()} bytes, above the configured ${config.maxFileBytes.toLocaleString()} byte limit. Parsing is synchronous and may temporarily block the extension host. Continue parsing?`,
+        { modal: true },
         'Continue',
-        'Cancel',
       );
-      if (answer !== 'Continue') return;
+      if (answer !== 'Continue') {
+        void vscode.window.setStatusBarMessage('Turtle Graph: parsing cancelled; keeping the previous graph.', 5000);
+        return;
+      }
     }
     const { message, parsed } = buildPreview({
       text: document.getText(),
@@ -185,10 +189,9 @@ export class PreviewManager {
     const target = await vscode.window.showSaveDialog({ defaultUri, filters: format === 'json' ? { JSON: ['json'] } : { PNG: ['png'] } });
     if (!target) return;
     try {
-      const data = format === 'json'
-        ? JSON.stringify(this.lastMessage?.type === 'graph' ? this.lastMessage.model : {}, null, 2)
-        : (payload ?? '').replace(/^data:image\/png;base64,/, '');
-      const bytes = format === 'png' ? Buffer.from(data, 'base64') : Buffer.from(data, 'utf8');
+      const bytes = format === 'png'
+        ? decodePngDataUri(payload)
+        : Buffer.from(JSON.stringify(this.lastMessage?.type === 'graph' ? this.lastMessage.model : {}, null, 2), 'utf8');
       await vscode.workspace.fs.writeFile(target, bytes);
       void vscode.window.showInformationMessage(`Turtle Graph: exported ${format.toUpperCase()} to ${target.fsPath}.`);
     } catch (error) {
