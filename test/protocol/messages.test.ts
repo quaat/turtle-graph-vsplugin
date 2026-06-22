@@ -37,12 +37,17 @@ describe('isWebviewToExtension', () => {
     expect(isWebviewToExtension({ type: 'ready' })).toBe(true);
     expect(isWebviewToExtension({ type: 'refresh' })).toBe(true);
     expect(isWebviewToExtension({ type: 'copy', text: 'x' })).toBe(true);
-    expect(isWebviewToExtension({ type: 'reveal', target: { kind: 'node' } })).toBe(true);
+    expect(isWebviewToExtension({ type: 'reveal', target: { kind: 'node', subject: 'http://ex/s' } })).toBe(true);
+    expect(isWebviewToExtension({ type: 'export', format: 'json' })).toBe(true);
+    expect(isWebviewToExtension({ type: 'export', format: 'png', payload: 'data:image/png;base64,AA==' })).toBe(true);
   });
 
   it('rejects malformed or unknown messages', () => {
     expect(isWebviewToExtension({ type: 'copy' })).toBe(false);
     expect(isWebviewToExtension({ type: 'reveal', target: { kind: 'bogus' } })).toBe(false);
+    expect(isWebviewToExtension({ type: 'reveal', target: { kind: 'edge', subject: 's' } })).toBe(false);
+    expect(isWebviewToExtension({ type: 'export', format: 'svg' })).toBe(false);
+    expect(isWebviewToExtension({ type: 'copy', text: 'x'.repeat(1_000_001) })).toBe(false);
     expect(isWebviewToExtension({ type: 'nope' })).toBe(false);
     expect(isWebviewToExtension(null)).toBe(false);
     expect(isWebviewToExtension('ready')).toBe(false);

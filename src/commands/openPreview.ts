@@ -3,20 +3,16 @@ import { buildPreview } from './payload';
 import { renderWebviewHtml } from '../webviewHtml';
 import { updateDiagnostics } from '../diagnostics/turtleDiagnostics';
 import { normalizeConfig, type ViewerConfig } from '../rdf/config';
+import { isSupportedRdfDocument, resolveRdfSyntax } from '../rdf/syntax';
 import { isWebviewToExtension, type RevealTarget } from '../protocol/messages';
 import { findStatementRef, findTokenLine } from '../rdf/sourceLocator';
 import { localName } from '../rdf/compactIri';
 import type { ExtensionToWebview } from '../protocol/messages';
 
-const TURTLE_EXTENSIONS = ['.ttl', '.rdf', '.nt', '.nq', '.trig'];
 const CHANGE_DEBOUNCE_MS = 300;
 
 export function isTurtleDocument(document: vscode.TextDocument): boolean {
-  if (document.languageId === 'turtle') {
-    return true;
-  }
-  const name = document.fileName.toLowerCase();
-  return TURTLE_EXTENSIONS.some((ext) => name.endsWith(ext));
+  return isSupportedRdfDocument(document);
 }
 
 function readConfig(): ViewerConfig {
@@ -25,6 +21,9 @@ function readConfig(): ViewerConfig {
     refreshOnChange: cfg.get('refreshOnChange'),
     maxInitialNodes: cfg.get('maxInitialNodes'),
     preferredLabels: cfg.get('preferredLabels'),
+    maxFileBytes: cfg.get('maxFileBytes'),
+    maxTriples: cfg.get('maxTriples'),
+    layout: cfg.get('layout'),
   });
 }
 
@@ -62,6 +61,7 @@ export class PreviewManager {
       this.panel.webview.html = renderWebviewHtml(this.panel.webview, this.context.extensionUri);
       this.panel.onDidDispose(
         () => {
+          if (this.debounce) clearTimeout(this.debounce);
           this.panel = undefined;
         },
         null,
@@ -75,18 +75,29 @@ export class PreviewManager {
     } else {
       this.panel.reveal(vscode.ViewColumn.Beside);
     }
-    this.render(editor.document);
+    void this.render(editor.document);
   }
 
-  private render(document: vscode.TextDocument): void {
+  private async render(document: vscode.TextDocument): Promise<void> {
     if (!this.panel) {
       return;
     }
     const config = readConfig();
+    const bytes = Buffer.byteLength(document.getText(), 'utf8');
+    if (bytes > config.maxFileBytes) {
+      const answer = await vscode.window.showWarningMessage(
+        `Turtle Graph: ${document.fileName} is ${bytes.toLocaleString()} bytes, above the configured ${config.maxFileBytes.toLocaleString()} byte limit. Continue parsing?`,
+        'Continue',
+        'Cancel',
+      );
+      if (answer !== 'Continue') return;
+    }
     const { message, parsed } = buildPreview({
       text: document.getText(),
       config,
       sourceFile: document.uri.fsPath,
+      languageId: document.languageId,
+      syntax: resolveRdfSyntax(document),
     });
     updateDiagnostics(this.diagnostics, document.uri, parsed.errors);
     this.lastMessage = message;
@@ -108,13 +119,13 @@ export class PreviewManager {
   refreshFromActive(): void {
     const document = this.activeDocument();
     if (document) {
-      this.render(document);
+      void this.render(document);
     }
   }
 
   handleDidSave(document: vscode.TextDocument): void {
     if (this.panel && this.docUri && document.uri.toString() === this.docUri.toString()) {
-      this.render(document);
+      void this.render(document);
     }
   }
 
@@ -131,7 +142,7 @@ export class PreviewManager {
     if (this.debounce) {
       clearTimeout(this.debounce);
     }
-    this.debounce = setTimeout(() => this.render(document), CHANGE_DEBOUNCE_MS);
+    this.debounce = setTimeout(() => void this.render(document), CHANGE_DEBOUNCE_MS);
   }
 
   handleActiveEditorChange(editor: vscode.TextEditor | undefined): void {
@@ -140,7 +151,7 @@ export class PreviewManager {
     }
     if (isTurtleDocument(editor.document)) {
       this.docUri = editor.document.uri;
-      this.render(editor.document);
+      void this.render(editor.document);
     }
   }
 
@@ -160,6 +171,28 @@ export class PreviewManager {
       void vscode.env.clipboard.writeText(raw.text);
     } else if (raw.type === 'reveal') {
       void this.reveal(raw.target);
+    } else if (raw.type === 'export') {
+      void this.exportGraph(raw.format, raw.payload);
+    }
+  }
+
+  private async exportGraph(format: 'json' | 'png', payload?: string): Promise<void> {
+    const document = this.activeDocument();
+    const panel = this.panel;
+    if (!document || !panel) return;
+    const base = document.uri.path.split('/').pop()?.replace(/\.[^.]+$/, '') || 'ttl-graph';
+    const defaultUri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders?.[0]?.uri ?? vscode.Uri.file(process.cwd()), `${base}.${format}`);
+    const target = await vscode.window.showSaveDialog({ defaultUri, filters: format === 'json' ? { JSON: ['json'] } : { PNG: ['png'] } });
+    if (!target) return;
+    try {
+      const data = format === 'json'
+        ? JSON.stringify(this.lastMessage?.type === 'graph' ? this.lastMessage.model : {}, null, 2)
+        : (payload ?? '').replace(/^data:image\/png;base64,/, '');
+      const bytes = format === 'png' ? Buffer.from(data, 'base64') : Buffer.from(data, 'utf8');
+      await vscode.workspace.fs.writeFile(target, bytes);
+      void vscode.window.showInformationMessage(`Turtle Graph: exported ${format.toUpperCase()} to ${target.fsPath}.`);
+    } catch (error) {
+      void vscode.window.showErrorMessage(`Turtle Graph: export failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -169,17 +202,17 @@ export class PreviewManager {
       return;
     }
     const text = document.getText();
-    let ref;
-    if (target.kind === 'edge') {
+    let ref = target.sourceRef;
+    if (!ref && target.kind === 'edge') {
       ref = findStatementRef(
         text,
         tokenForId(target.subject),
         localName(target.predicate ?? ''),
         tokenForId(target.object),
       );
-    } else if (target.kind === 'literal') {
+    } else if (!ref && target.kind === 'literal') {
       ref = findTokenLine(text, [target.value ?? '']);
-    } else {
+    } else if (!ref) {
       ref = findTokenLine(text, [tokenForId(target.subject)]);
     }
     if (!ref) {

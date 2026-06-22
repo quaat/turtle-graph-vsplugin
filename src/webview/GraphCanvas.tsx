@@ -7,6 +7,7 @@ import type { Selection } from './state';
 export interface GraphActions {
   fit: () => void;
   resetLayout: () => void;
+  png: () => string | undefined;
 }
 
 export interface GraphCanvasProps {
@@ -96,6 +97,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
     props.registerActions?.({
       fit: () => cy.fit(undefined, 30),
       resetLayout: () => cy.layout({ name: 'cose', animate: false }).run(),
+      png: () => cy.png({ full: false, scale: 2, output: 'base64uri' }) as string,
     });
 
     return () => {

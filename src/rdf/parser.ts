@@ -1,4 +1,5 @@
 import { Parser, type Quad, type Term } from 'n3';
+import type { RdfSyntax } from './syntax';
 import type { ParseError, ParsedQuad, ParsedTerm, ParsedTurtleDocument, PrefixMap } from './types';
 
 function toParsedTerm(term: Term): ParsedTerm {
@@ -36,12 +37,12 @@ function normalizeError(error: Error): ParseError {
  * Parse Turtle text into RDF quads, a prefix map, and structured parse errors.
  * Never throws on malformed input; parse failures are returned in `errors`.
  */
-export function parseTurtleDocument(text: string, baseIRI?: string): ParsedTurtleDocument {
+export function parseTurtleDocument(text: string, baseIRI?: string, syntax: RdfSyntax = 'Turtle'): ParsedTurtleDocument {
   const quads: ParsedQuad[] = [];
   const prefixes: PrefixMap = {};
   const errors: ParseError[] = [];
 
-  const parser = new Parser({ baseIRI });
+  const parser = new Parser({ baseIRI, format: syntax });
 
   const onPrefix = (prefix: string, iri: unknown) => {
     const value =
