@@ -1,0 +1,92 @@
+{
+  "name": "ttl-graph-viewer",
+  "displayName": "Turtle Graph Viewer",
+  "description": "Visualize Turtle/RDF files as an interactive graph inside VS Code.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "publisher": "sintef",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:turtle"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "ttlGraph.openPreview",
+        "title": "Open Preview",
+        "category": "Turtle Graph"
+      }
+    ],
+    "configuration": {
+      "title": "Turtle Graph Viewer",
+      "properties": {
+        "ttlGraphViewer.refreshOnChange": {
+          "type": "boolean",
+          "default": true,
+          "description": "Refresh the graph preview (debounced) as the Turtle document changes."
+        },
+        "ttlGraphViewer.maxInitialNodes": {
+          "type": "number",
+          "default": 500,
+          "minimum": 1,
+          "description": "Maximum number of nodes rendered initially. Larger graphs show a bounded overview."
+        },
+        "ttlGraphViewer.preferredLabels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "rdfs:label",
+            "skos:prefLabel",
+            "dcterms:title"
+          ],
+          "description": "Predicates (CURIE or IRI) used to choose a node's display label, in priority order."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "build:webview": "vite build",
+    "build": "npm run compile && npm run build:webview",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "n3": "^1.17.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.13.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.0.1",
+    "@types/cytoscape": "^3.21.8",
+    "@types/n3": "^1.16.4",
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/vscode": "^1.85.0",
+    "@vitejs/plugin-react": "^4.3.3",
+    "cytoscape": "^3.30.2",
+    "eslint": "^9.13.0",
+    "jsdom": "^25.0.1",
+    "prettier": "^3.3.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.12.2",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.4"
+  }
+}

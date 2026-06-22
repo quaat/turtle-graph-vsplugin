@@ -1,0 +1,9 @@
+node_modules/
+out/
+dist/
+coverage/
+*.vsix
+*.log
+.DS_Store
+.claude/
+data/

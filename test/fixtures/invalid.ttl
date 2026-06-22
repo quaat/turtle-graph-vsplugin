@@ -1,0 +1,4 @@
+@prefix ex: <http://example.org/> .
+
+ex:Alice ex:knows  .
+this is not valid turtle @@@
