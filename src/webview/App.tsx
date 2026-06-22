@@ -18,6 +18,7 @@ export function App(props: AppProps): React.ReactElement {
     props.initialMessage ? reducer(base, { type: 'message', message: props.initialMessage }) : base,
   );
   const actionsRef = React.useRef<GraphActions | undefined>(undefined);
+  const [showLiterals, setShowLiterals] = React.useState(true);
 
   React.useEffect(() => {
     function onMessage(event: MessageEvent): void {
@@ -72,13 +73,17 @@ export function App(props: AppProps): React.ReactElement {
         predicate={state.predicate}
         predicates={predicates}
         onPredicate={(p) => dispatch({ type: 'predicate', predicate: p })}
+        showLiterals={showLiterals}
+        onShowLiterals={setShowLiterals}
+        onExportJson={() => api?.postMessage({ type: 'export', format: 'json' })}
+        onExportPng={() => api?.postMessage({ type: 'export', format: 'png', payload: actionsRef.current?.png() })}
         onFit={() => actionsRef.current?.fit()}
         onReset={() => actionsRef.current?.resetLayout()}
         onRefresh={() => api?.postMessage({ type: 'refresh' })}
       />
       {model.stats.truncated && (
         <div className="overview-banner">
-          Showing {model.stats.nodeCount} of {model.stats.totalNodeCount} nodes (bounded overview).
+          Showing {model.stats.renderedNodeCount} of {model.stats.totalNodeCount} nodes and {model.stats.renderedEdgeCount} of {model.stats.totalEdgeCount} edges from {model.stats.totalTripleCount} triples (bounded overview).
         </div>
       )}
       <div className="main">
@@ -95,13 +100,19 @@ export function App(props: AppProps): React.ReactElement {
             }}
           />
         )}
+        <AccessibleGraphList model={model} visible={visible} onSelect={(selection) => dispatch({ type: 'select', selection })} />
         <InspectorPanel
           model={model}
           selection={state.selection}
+          showLiterals={showLiterals}
           onSelect={(selection) => dispatch({ type: 'select', selection })}
           api={api}
         />
       </div>
     </div>
   );
+}
+
+function AccessibleGraphList({ model, visible, onSelect }: { model: import('../rdf/types').GraphModel; visible: import('./filtering').VisibleSet; onSelect: (selection: import('./state').Selection) => void }): React.ReactElement {
+  return <aside className="accessible-list" aria-label="Graph elements"><h2>Graph elements</h2><h3>Nodes</h3><ul>{model.nodes.filter(n => visible.nodeIds.has(n.id)).map(n => <li key={n.id}><button type="button" onClick={() => onSelect({ kind: 'node', id: n.id })}>{n.label}</button></li>)}</ul><h3>Edges</h3><ul>{model.edges.filter(e => visible.edgeIds.has(e.id)).map(e => <li key={e.id}><button type="button" onClick={() => onSelect({ kind: 'edge', id: e.id })}>{e.label}</button></li>)}</ul></aside>;
 }

@@ -33,6 +33,8 @@ export interface ParsedQuad {
 }
 
 export interface SourceRef {
+  /** Source file path, when known. */
+  file?: string;
   /** 1-based line in the source document. */
   line: number;
   /** 1-based column where the match starts, when known. */
@@ -40,6 +42,7 @@ export interface SourceRef {
 }
 
 export interface LiteralProperty {
+  subject: string;
   id: string;
   predicate: string;
   predicateLabel: string;
@@ -65,6 +68,7 @@ export interface GraphNode {
 }
 
 export interface GraphEdge {
+  statement: { subject: string; predicate: string; object: string; graph?: string };
   id: string;
   source: string;
   target: string;
@@ -80,6 +84,11 @@ export interface GraphStats {
   literalCount: number;
   truncated: boolean;
   totalNodeCount: number;
+  totalEdgeCount: number;
+  totalTripleCount: number;
+  renderedNodeCount: number;
+  renderedEdgeCount: number;
+  truncatedTriples: boolean;
 }
 
 export interface GraphModel {

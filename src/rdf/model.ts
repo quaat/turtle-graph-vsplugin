@@ -15,6 +15,7 @@ export interface BuildGraphOptions {
   preferredLabels?: string[];
   /** Cap the number of rendered nodes; larger graphs become a bounded overview. */
   maxNodes?: number;
+  maxTriples?: number;
 }
 
 function termId(term: ParsedTerm): string {
@@ -64,7 +65,9 @@ export function buildGraphModel(
   const edges = new Map<string, GraphEdge>();
   let literalCount = 0;
 
-  for (const quad of quads) {
+  const boundedQuads = typeof options.maxTriples === 'number' && quads.length > options.maxTriples ? quads.slice(0, options.maxTriples) : quads;
+
+  for (const quad of boundedQuads) {
     const { subject, predicate, object } = quad;
     if (subject.termType === 'Literal') {
       continue; // not valid in RDF; skip defensively
@@ -79,6 +82,7 @@ export function buildGraphModel(
       }
       const property: LiteralProperty = {
         id: `${subjectNode.id}|${predicateIri}|${subjectNode.properties.length}`,
+        subject: subjectNode.id,
         predicate: predicateIri,
         predicateLabel,
         value: object.value,
@@ -117,6 +121,7 @@ export function buildGraphModel(
         label: predicateLabel,
         graph: quad.graph,
         sourceRefs: [],
+        statement: { subject: subjectNode.id, predicate: predicateIri, object: objectNode.id, graph: quad.graph },
       });
       if (!subjectNode.outgoing.includes(edgeId)) {
         subjectNode.outgoing.push(edgeId);
@@ -127,11 +132,28 @@ export function buildGraphModel(
     }
   }
 
-  const sortedNodes = [...nodes.values()].sort((a, b) => a.id.localeCompare(b.id));
-  const totalNodeCount = sortedNodes.length;
+  const degree = new Map<string, number>();
+  for (const edge of edges.values()) {
+    degree.set(edge.source, (degree.get(edge.source) ?? 0) + 1);
+    degree.set(edge.target, (degree.get(edge.target) ?? 0) + 1);
+  }
+  const priority = (node: MutableNode): number => {
+    if (node.typeIris.some((type) => /[#/](Class|Property|ObjectProperty|DatatypeProperty|AnnotationProperty)$/i.test(type))) return 0;
+    if (node.typeIris.length > 0) return 1;
+    return 2;
+  };
+  const byId = [...nodes.values()].sort((a, b) => a.id.localeCompare(b.id));
+  const totalNodeCount = byId.length;
   const maxNodes = options.maxNodes;
   const truncated = typeof maxNodes === 'number' && totalNodeCount > maxNodes;
-  const keptNodes = truncated ? sortedNodes.slice(0, maxNodes) : sortedNodes;
+  const rankedNodes = truncated
+    ? [...nodes.values()].sort((a, b) =>
+        priority(a) - priority(b) ||
+        (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0) ||
+        a.id.localeCompare(b.id),
+      )
+    : byId;
+  const keptNodes = truncated ? rankedNodes.slice(0, maxNodes) : rankedNodes;
   const keptIds = new Set(keptNodes.map((n) => n.id));
 
   const keptEdges = [...edges.values()]
@@ -156,8 +178,13 @@ export function buildGraphModel(
       nodeCount: finalNodes.length,
       edgeCount: keptEdges.length,
       literalCount,
-      truncated,
+      truncated: truncated || boundedQuads.length < quads.length,
       totalNodeCount,
+      totalEdgeCount: edges.size,
+      totalTripleCount: quads.length,
+      renderedNodeCount: finalNodes.length,
+      renderedEdgeCount: keptEdges.length,
+      truncatedTriples: boundedQuads.length < quads.length,
     },
   };
 }

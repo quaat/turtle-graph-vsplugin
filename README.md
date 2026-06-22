@@ -1,70 +1,89 @@
-# Turtle Graph Viewer (`ttl-graph-viewer`)
+# Turtle Graph Viewer
 
-An IDE-native VS Code extension that renders Turtle/RDF files as an interactive graph, lets you
-inspect nodes and edges, and navigates back to the Turtle source.
+`ttl-graph-viewer` is a VS Code extension for visualizing local RDF files as an interactive graph. It keeps the MVP architecture intentionally small: the extension host parses RDF with `n3`, builds a typed graph model, sends typed protocol messages to a React/Vite webview, and renders the graph with Cytoscape plus an inspector and source navigation.
 
-This is the **MVP / first milestone**: a working local `.ttl` graph preview with clickable
-nodes/edges and an inspector panel.
+## Supported formats
+
+This production-hardening pass supports syntaxes that `n3` can parse reliably:
+
+| Extension | Syntax |
+| --- | --- |
+| `.ttl` | Turtle |
+| `.trig` | TriG |
+| `.nt` | N-Triples |
+| `.nq` | N-Quads |
+
+`.rdf` / RDF/XML is intentionally **not supported**. RDF/XML requires a different parser and is future scope.
 
 ## Features
 
-- **Command `Turtle Graph: Open Preview`** — parses the active Turtle document and opens a graph
-  webview beside the editor.
-- **Interactive graph** (Cytoscape.js) — pan/zoom, fit, reset layout, refresh.
-- **Inspector** — click a node or edge to see IRIs, compact labels, RDF types, literal properties
-  (with datatype/language), and incoming/outgoing edge counts. Copy IRI / compact name.
-- **Search & predicate filter** — find nodes by label/IRI and filter edges by predicate.
-- **Diagnostics** — Turtle parse errors are reported in the Problems panel and as a webview error
-  state.
-- **Live refresh** — re-renders on save, on Refresh, on active-editor change, and (debounced) on
-  document change when `ttlGraphViewer.refreshOnChange` is enabled.
-- **Best-effort source navigation** — `Reveal in Turtle` jumps to the most likely source line.
-- **Bounded overview** — graphs larger than `ttlGraphViewer.maxInitialNodes` render a capped subset
-  to avoid freezing.
+- Open the **Turtle Graph: Open Preview** command for supported RDF documents.
+- Format-aware parsing and diagnostics for Turtle, TriG, N-Triples, and N-Quads.
+- Graph canvas with search, predicate filtering, fit, reset layout, and refresh controls.
+- Toggle literal properties in the inspector.
+- Export JSON through a save dialog.
+- Export PNG from the current Cytoscape canvas through a save dialog.
+- Inspector details for nodes, blank nodes, predicates, source lines, literal values, named graphs, and reconstructed raw edge statements.
+- Reveal-source actions prefer stored source references and fall back to best-effort token search.
+- Keyboard-accessible fallback lists for visible nodes and edges.
+- Theme-aware CSS using VS Code color variables for light, dark, and high-contrast themes.
 
-## Configuration
+## Large-file behavior
 
-| Setting | Default | Description |
-| --- | --- | --- |
-| `ttlGraphViewer.refreshOnChange` | `true` | Debounced refresh as the document changes. |
-| `ttlGraphViewer.maxInitialNodes` | `500` | Node cap before a bounded overview is shown. |
-| `ttlGraphViewer.preferredLabels` | `["rdfs:label","skos:prefLabel","dcterms:title"]` | Label predicates in priority order (CURIE or IRI). |
+The extension is bounded by configuration:
+
+- `ttlGraphViewer.maxInitialNodes` (default `500`) limits initially rendered nodes.
+- `ttlGraphViewer.maxFileBytes` (default `2000000`) warns before parsing very large files.
+- `ttlGraphViewer.maxTriples` (default `20000`) bounds model-building input for an overview.
+- `ttlGraphViewer.layout` (default `cose`) records the intended graph layout.
+
+When the graph is truncated, the webview shows rendered and total node/edge/triple counts. Node selection favors typed classes/properties, then high-degree nodes, then deterministic IDs instead of simple lexicographic first-N selection.
+
+## Current limitations
+
+- RDF/XML (`.rdf`) is unsupported.
+- Source navigation is best effort; it uses stored line references where available and token search otherwise, not a full RDF source map.
+- SVG export is deferred to avoid adding a large dependency.
+- Full graphical assertions for Cytoscape rendering remain manual; React/jsdom tests cover UI behavior where practical.
+- Sculpin-specific behavior is planned future scope and is not implemented in this extension yet.
 
 ## Development
 
 ```bash
 npm install
-npm run build       # tsc (extension host) + vite (webview bundle)
 npm run lint
-npm test            # Vitest unit + component tests
+npm run build
+npm test
+npm run test:extension
 ```
 
-### Run in the Extension Development Host
+Package locally with:
 
-1. `npm run build`
-2. Open this folder in VS Code and press **F5** (uses `.vscode/launch.json`).
-3. In the new window, open a `.ttl` file and run **Turtle Graph: Open Preview** from the command
-   palette.
+```bash
+npm run package
+```
 
-### Manual verification checklist
+The package script uses `npx --yes @vscode/vsce package`; it requires registry access to download `@vscode/vsce` if it is not already cached.
 
-- Open `test/fixtures/simple.ttl` → graph renders beside the editor.
-- Click a node / edge → the inspector updates with details and literal datatype/language.
-- Open `test/fixtures/invalid.ttl` → a diagnostic appears and the webview shows an error state.
-- Edit and save a `.ttl` file → the graph refreshes.
+## Manual verification checklist
 
-## Limitations / known issues
+1. Open a `.ttl`, `.trig`, `.nt`, and `.nq` file and run **Turtle Graph: Open Preview**.
+2. Confirm `.rdf` is not treated as supported.
+3. Confirm invalid Turtle produces diagnostics and an error message.
+4. Use search and predicate filtering.
+5. Select nodes and edges from both the canvas and accessible lists.
+6. Toggle literal properties.
+7. Export JSON and PNG and confirm VS Code prompts for save locations.
+8. Use reveal-source from node, literal, and edge inspector entries.
+9. Try a file larger than `ttlGraphViewer.maxFileBytes` and confirm the warning prompt.
 
-- **Source navigation is best-effort.** RDF parsing does not expose exact source spans, so
-  `Reveal in Turtle` uses token-based text search and may land on the first similar statement.
-  Compact Turtle syntax, repeated triples, and complex blank-node structures can be imprecise.
-- Graph rendering is not covered by automated VS Code UI tests; the manual checklist above is the
-  source of truth for end-to-end behavior.
-- Large graphs are capped to `maxInitialNodes`; full-graph exploration and a workspace index are
-  planned for later phases.
+## Packaging and CI
 
-## Scope
+The repository includes `vscode:prepublish`, `.vscodeignore`, and a GitHub Actions workflow that runs:
 
-In scope (MVP): single-file Turtle preview, inspector, diagnostics, refresh, best-effort source
-navigation. Out of scope for now: workspace indexing, Sculpin integration, SHACL/SPARQL, visual
-diff, and exact source maps (see `plan.md`).
+- `npm ci`
+- `npm run lint`
+- `npm run build`
+- `npm test`
+
+Do not publish to the Marketplace from this repository without a separate release review.

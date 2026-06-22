@@ -55,7 +55,7 @@ function tokenForTermValue(value: string): string {
 }
 
 /** Annotate a graph model with best-effort source line references, mutating it in place. */
-export function locateSourceRefs(model: GraphModel, text: string): GraphModel {
+export function locateSourceRefs(model: GraphModel, text: string, sourceFile?: string): GraphModel {
   for (const edge of model.edges) {
     const ref = findStatementRef(
       text,
@@ -63,7 +63,7 @@ export function locateSourceRefs(model: GraphModel, text: string): GraphModel {
       tokenForTermValue(edge.predicate),
       tokenForNodeId(edge.target),
     );
-    edge.sourceRefs = ref ? [ref] : [];
+    edge.sourceRefs = ref ? [{ ...ref, file: sourceFile }] : [];
   }
 
   for (const node of model.nodes) {
@@ -72,7 +72,7 @@ export function locateSourceRefs(model: GraphModel, text: string): GraphModel {
       const ref =
         findTokenLine(text, [subjectToken, property.value]) ??
         findTokenLine(text, [property.value]);
-      property.sourceRefs = ref ? [ref] : [];
+      property.sourceRefs = ref ? [{ ...ref, file: sourceFile }] : [];
     }
   }
 

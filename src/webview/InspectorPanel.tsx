@@ -8,6 +8,7 @@ export interface InspectorPanelProps {
   model: GraphModel;
   selection: Selection;
   onSelect: (selection: Selection) => void;
+  showLiterals?: boolean;
   api?: VsCodeApi;
 }
 
@@ -20,7 +21,7 @@ function CopyButton({ api, text, label }: { api?: VsCodeApi; text: string; label
 }
 
 export function InspectorPanel(props: InspectorPanelProps): React.ReactElement {
-  const { model, selection, api } = props;
+  const { model, selection, api, showLiterals = true } = props;
 
   if (!selection) {
     return (
@@ -70,7 +71,7 @@ export function InspectorPanel(props: InspectorPanelProps): React.ReactElement {
             {counts.incoming} in · {counts.outgoing} out
           </span>
         </div>
-        {node.properties.length > 0 && (
+        {showLiterals && node.properties.length > 0 && (
           <div className="inspector-section">
             <h3>Properties</h3>
             <ul className="property-list">
@@ -80,17 +81,19 @@ export function InspectorPanel(props: InspectorPanelProps): React.ReactElement {
                   <span className="property-value">{prop.value}</span>
                   {prop.datatypeLabel && <span className="property-meta">^^{prop.datatypeLabel}</span>}
                   {prop.language && <span className="property-meta">@{prop.language}</span>}
+                  {prop.sourceRefs[0] && <button type="button" className="link" onClick={() => api?.postMessage({ type: 'reveal', target: { kind: 'literal', subject: prop.subject, predicate: prop.predicate, value: prop.value, sourceRef: prop.sourceRefs[0] } })}>Line {prop.sourceRefs[0].line}</button>}
                 </li>
               ))}
             </ul>
           </div>
         )}
         <div className="inspector-actions">
+          <CopyButton api={api} text={node.id} label="Copy full ID" />
           {node.iri && <CopyButton api={api} text={node.iri} label="Copy IRI" />}
           <CopyButton api={api} text={node.compactId} label="Copy compact" />
           <button
             type="button"
-            onClick={() => api?.postMessage({ type: 'reveal', target: { kind: 'node', subject: node.id } })}
+            onClick={() => api?.postMessage({ type: 'reveal', target: { kind: 'node', subject: node.id, sourceRef: node.properties[0]?.sourceRefs[0] } })}
           >
             Reveal in Turtle
           </button>
@@ -110,6 +113,7 @@ export function InspectorPanel(props: InspectorPanelProps): React.ReactElement {
   const { edge, source, target } = details;
   const sourceFull = source?.iri ?? source?.blankNodeId ?? edge.source;
   const targetFull = target?.iri ?? target?.blankNodeId ?? edge.target;
+  const rawStatement = `${edge.statement.subject} ${edge.statement.predicate} ${edge.statement.object}${edge.statement.graph ? ` ${edge.statement.graph}` : ''} .`;
   return (
     <aside className="inspector" aria-label="Inspector">
       <h2 className="inspector-title">{edge.label}</h2>
@@ -149,6 +153,10 @@ export function InspectorPanel(props: InspectorPanelProps): React.ReactElement {
         <span className="inspector-key">Object IRI</span>
         <code className="inspector-iri">{targetFull}</code>
       </div>
+      {edge.sourceRefs[0] && (
+        <div className="inspector-row"><span className="inspector-key">Source</span><span>Line {edge.sourceRefs[0].line}{edge.sourceRefs[0].file ? ` · ${edge.sourceRefs[0].file}` : ''}</span></div>
+      )}
+      <div className="inspector-row"><span className="inspector-key">Raw</span><code className="inspector-iri">{rawStatement}</code></div>
       {edge.graph && (
         <div className="inspector-row">
           <span className="inspector-key">Graph</span>
@@ -158,6 +166,8 @@ export function InspectorPanel(props: InspectorPanelProps): React.ReactElement {
       <div className="inspector-actions">
         {source?.iri && <CopyButton api={api} text={source.iri} label="Copy subject IRI" />}
         <CopyButton api={api} text={edge.predicate} label="Copy predicate IRI" />
+        <CopyButton api={api} text={edge.label} label="Copy compact predicate" />
+        <CopyButton api={api} text={rawStatement} label="Copy raw statement" />
         {target?.iri && <CopyButton api={api} text={target.iri} label="Copy object IRI" />}
         <button
           type="button"
@@ -169,6 +179,7 @@ export function InspectorPanel(props: InspectorPanelProps): React.ReactElement {
                 subject: edge.source,
                 predicate: edge.predicate,
                 object: edge.target,
+                sourceRef: edge.sourceRefs[0],
               },
             })
           }

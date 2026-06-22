@@ -14,7 +14,11 @@
   ],
   "main": "./out/extension.js",
   "activationEvents": [
-    "onLanguage:turtle"
+    "onCommand:ttlGraph.openPreview",
+    "onLanguage:turtle",
+    "onLanguage:trig",
+    "onLanguage:ntriples",
+    "onLanguage:nquads"
   ],
   "contributes": {
     "commands": [
@@ -49,9 +53,65 @@
             "dcterms:title"
           ],
           "description": "Predicates (CURIE or IRI) used to choose a node's display label, in priority order."
+        },
+        "ttlGraphViewer.maxFileBytes": {
+          "type": "number",
+          "default": 2000000,
+          "minimum": 1,
+          "description": "Warn before parsing local RDF files larger than this many bytes."
+        },
+        "ttlGraphViewer.maxTriples": {
+          "type": "number",
+          "default": 20000,
+          "minimum": 1,
+          "description": "Maximum parsed triples used to build the initial bounded overview."
+        },
+        "ttlGraphViewer.layout": {
+          "type": "string",
+          "default": "cose",
+          "description": "Cytoscape layout used by the graph canvas."
         }
       }
-    }
+    },
+    "languages": [
+      {
+        "id": "turtle",
+        "aliases": [
+          "Turtle",
+          "ttl"
+        ],
+        "extensions": [
+          ".ttl"
+        ]
+      },
+      {
+        "id": "trig",
+        "aliases": [
+          "TriG"
+        ],
+        "extensions": [
+          ".trig"
+        ]
+      },
+      {
+        "id": "ntriples",
+        "aliases": [
+          "N-Triples"
+        ],
+        "extensions": [
+          ".nt"
+        ]
+      },
+      {
+        "id": "nquads",
+        "aliases": [
+          "N-Quads"
+        ],
+        "extensions": [
+          ".nq"
+        ]
+      }
+    ]
   },
   "scripts": {
     "compile": "tsc -p ./",
@@ -62,7 +122,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "vscode:prepublish": "npm run build",
+    "package": "npx --yes @vscode/vsce package",
+    "test:extension": "vitest run test/extension"
   },
   "dependencies": {
     "n3": "^1.17.3"

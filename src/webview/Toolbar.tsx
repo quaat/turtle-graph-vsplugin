@@ -8,6 +8,10 @@ export interface ToolbarProps {
   onPredicate: (value: string) => void;
   onFit: () => void;
   onReset: () => void;
+  showLiterals: boolean;
+  onShowLiterals: (value: boolean) => void;
+  onExportJson: () => void;
+  onExportPng: () => void;
   onRefresh: () => void;
 }
 
@@ -35,13 +39,16 @@ export function Toolbar(props: ToolbarProps): React.ReactElement {
           </option>
         ))}
       </select>
-      <button type="button" onClick={props.onFit}>
+      <label className="toolbar-check"><input type="checkbox" checked={props.showLiterals} onChange={(e) => props.onShowLiterals(e.target.checked)} /> Show literal properties</label>
+      <button type="button" title="Export current graph as JSON" onClick={props.onExportJson}>Export JSON</button>
+      <button type="button" title="Export current graph canvas as PNG" onClick={props.onExportPng}>Export PNG</button>
+      <button type="button" title="Fit graph to view" onClick={props.onFit}>
         Fit
       </button>
-      <button type="button" onClick={props.onReset}>
+      <button type="button" title="Reset graph layout" onClick={props.onReset}>
         Reset layout
       </button>
-      <button type="button" onClick={props.onRefresh}>
+      <button type="button" title="Refresh graph from source" onClick={props.onRefresh}>
         Refresh
       </button>
     </div>

@@ -8,12 +8,15 @@ import {
   type ExtensionToWebview,
 } from '../protocol/messages';
 import type { ParsedTurtleDocument } from '../rdf/types';
+import { resolveRdfSyntax, type RdfSyntax } from '../rdf/syntax';
 
 export interface PreviewInput {
   text: string;
   config: ViewerConfig;
   baseIRI?: string;
   sourceFile?: string;
+  languageId?: string;
+  syntax?: RdfSyntax;
 }
 
 export interface PreviewResult {
@@ -26,11 +29,12 @@ export interface PreviewResult {
  * Returns an error message only when nothing could be parsed; partial graphs are still shown.
  */
 export function buildPreview(input: PreviewInput): PreviewResult {
-  const parsed = parseTurtleDocument(input.text, input.baseIRI);
+  const syntax = input.syntax ?? resolveRdfSyntax({ languageId: input.languageId, fileName: input.sourceFile }) ?? 'Turtle';
+  const parsed = parseTurtleDocument(input.text, input.baseIRI, syntax);
 
   if (parsed.quads.length === 0 && parsed.errors.length > 0) {
     return {
-      message: buildErrorMessage('Failed to parse Turtle document.', parsed.errors),
+      message: buildErrorMessage(`Failed to parse ${syntax} document.`, parsed.errors),
       parsed,
     };
   }
@@ -45,8 +49,9 @@ export function buildPreview(input: PreviewInput): PreviewResult {
   const model = buildGraphModel(parsed.quads, parsed.prefixes, {
     preferredLabels,
     maxNodes: input.config.maxInitialNodes,
+    maxTriples: input.config.maxTriples,
   });
-  locateSourceRefs(model, input.text);
+  locateSourceRefs(model, input.text, input.sourceFile);
 
   return {
     message: buildGraphMessage(
