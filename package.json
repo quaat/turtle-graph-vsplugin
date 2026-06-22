@@ -132,7 +132,7 @@
     "test:watch": "vitest",
     "vscode:prepublish": "npm run build",
     "package": "npx --yes @vscode/vsce package",
-    "test:extension": "npx --yes --package @vscode/test-electron node ./test/vscode/run.mjs",
+    "test:extension": "node ./test/vscode/run.mjs",
     "test:unit": "vitest run",
     "test:all": "npm run lint && npm run build && npm run test:unit && npm run test:extension",
     "package:check": "npx --yes @vscode/vsce ls"
