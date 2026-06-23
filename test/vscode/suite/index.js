@@ -17,9 +17,11 @@ async function test(name, fn) {
   }
 }
 
-async function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
+async function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-(async () => {
+async function run() {
   const extension = vscode.extensions.getExtension('sintef.ttl-graph-viewer');
   await test('extension activates', async () => {
     assert.ok(extension, 'extension should be discoverable by publisher/name');
@@ -70,5 +72,9 @@ async function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms
   });
 
   await vscode.commands.executeCommand('workbench.action.closeAllEditors');
-  if (process.exitCode) process.exit(process.exitCode);
-})();
+  if (process.exitCode) {
+    throw new Error('One or more extension tests failed');
+  }
+}
+
+module.exports = { run };
