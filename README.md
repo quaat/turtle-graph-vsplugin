@@ -35,7 +35,7 @@ The extension is bounded by configuration:
 - `ttlGraphViewer.maxInitialNodes` (default `500`) limits initially rendered nodes.
 - `ttlGraphViewer.maxFileBytes` (default `2000000`) warns before parsing very large files.
 - `ttlGraphViewer.maxTriples` (default `20000`) bounds model-building input for an overview.
-- `ttlGraphViewer.layout` (default `cose`) records the intended graph layout.
+- `ttlGraphViewer.layout` (default `cose`) selects the graph layout. Supported safe values are `cose`, `grid`, `circle`, `breadthfirst`, and `concentric`; unknown values are normalized to `cose`.
 
 When the graph is truncated, the webview shows rendered and total node/edge/triple counts. Node selection favors typed classes/properties, then high-degree nodes, then deterministic IDs instead of simple lexicographic first-N selection.
 
@@ -47,23 +47,84 @@ When the graph is truncated, the webview shows rendered and total node/edge/trip
 - Full graphical assertions for Cytoscape rendering remain manual; React/jsdom tests cover UI behavior where practical.
 - Sculpin-specific behavior is planned future scope and is not implemented in this extension yet.
 
-## Development
+## Production installation
+
+The extension identifier is `sintef.ttl-graph-viewer` (`publisher` + `name` from `package.json`).
+
+### Install from GitHub Releases
+
+Download `ttl-graph-viewer-<version>.vsix` from a GitHub Release, then run:
 
 ```bash
-npm install
+code --install-extension ttl-graph-viewer-<version>.vsix
+code --list-extensions | grep ttl-graph-viewer
+```
+
+Uninstall with:
+
+```bash
+code --uninstall-extension sintef.ttl-graph-viewer
+```
+
+### Install from a locally built VSIX
+
+```bash
+npm ci
+npm run package
+code --install-extension ./ttl-graph-viewer-<version>.vsix
+```
+
+Upgrade an installed VSIX with:
+
+```bash
+code --install-extension ttl-graph-viewer-<new-version>.vsix --force
+```
+
+## Development mode
+
+```bash
+npm ci
 npm run lint
 npm run build
-npm test
+npm run test:unit
 npm run test:extension
 ```
 
-Package locally with:
+## Release build
 
 ```bash
+npm ci
+npm run lint
+npm run build
+npm run test:unit
+npm run test:extension
 npm run package
+npm run package:check
 ```
 
-The package script uses `npx --yes @vscode/vsce package`; it requires registry access to download `@vscode/vsce` if it is not already cached.
+Expected VSIX contents include `package.json`, `README.md`, `CHANGELOG.md`, `out/**`, and `dist/webview/**`; source, tests, CI files, coverage, `node_modules`, source maps, and `plan.md` are excluded. The generated filename pattern is `ttl-graph-viewer-<version>.vsix`.
+
+### Maintainer versioning
+
+```bash
+npm version patch
+npm version minor
+npm version major
+git push --follow-tags
+```
+
+Pushing a tag such as `v0.1.1` triggers the release workflow. The workflow builds and uploads a VSIX artifact and creates or updates the GitHub Release for tag builds. Marketplace and Open VSX publishing are future scope unless publisher secrets are added and reviewed.
+
+## Production verification checklist
+
+1. Open VS Code.
+2. Open a `.ttl`, `.trig`, `.nt`, or `.nq` file.
+3. Run **Turtle Graph: Open Preview**.
+4. Confirm graph renders.
+5. Confirm inspector works.
+6. Confirm invalid Turtle creates diagnostics.
+7. Confirm JSON/PNG export works.
+8. Confirm `.rdf` is not treated as supported.
 
 ## Manual verification checklist
 
@@ -79,11 +140,12 @@ The package script uses `npx --yes @vscode/vsce package`; it requires registry a
 
 ## Packaging and CI
 
-The repository includes `vscode:prepublish`, `.vscodeignore`, and a GitHub Actions workflow that runs:
+CI runs on pushes and pull requests with `npm ci`, lint, build, unit tests, VS Code Extension Host tests under `xvfb-run`, package creation, and package content validation. Release CI runs on manual dispatch and `v*` tags, uploads `ttl-graph-viewer-<version>.vsix`, and attaches it to tag releases.
 
-- `npm ci`
-- `npm run lint`
-- `npm run build`
-- `npm test`
+## Known production limitations
 
-Do not publish to the Marketplace from this repository without a separate release review.
+- RDF/XML (`.rdf`) is unsupported.
+- Large files may still block the extension host after the user confirms synchronous parsing.
+- Source navigation is best-effort.
+- Sculpin integration is future scope.
+- Marketplace/Open VSX publishing is not yet configured.

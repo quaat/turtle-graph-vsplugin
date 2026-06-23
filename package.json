@@ -69,7 +69,14 @@
         "ttlGraphViewer.layout": {
           "type": "string",
           "default": "cose",
-          "description": "Cytoscape layout used by the graph canvas."
+          "description": "Safe Cytoscape layout used by the graph canvas. Unknown values are normalized to cose.",
+          "enum": [
+            "cose",
+            "grid",
+            "circle",
+            "breadthfirst",
+            "concentric"
+          ]
         }
       }
     },
@@ -125,7 +132,10 @@
     "test:watch": "vitest",
     "vscode:prepublish": "npm run build",
     "package": "npx --yes @vscode/vsce package",
-    "test:extension": "vitest run test/extension"
+    "test:extension": "node ./test/vscode/run.mjs",
+    "test:unit": "vitest run",
+    "test:all": "npm run lint && npm run build && npm run test:unit && npm run test:extension",
+    "package:check": "npx --yes @vscode/vsce ls"
   },
   "dependencies": {
     "n3": "^1.17.3"

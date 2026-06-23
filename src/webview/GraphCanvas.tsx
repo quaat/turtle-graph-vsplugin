@@ -1,5 +1,6 @@
 import * as React from 'react';
 import cytoscape, { type Core, type ElementDefinition } from 'cytoscape';
+import type { WebviewConfig } from '../protocol/messages';
 import type { GraphModel } from '../rdf/types';
 import type { VisibleSet } from './filtering';
 import type { Selection } from './state';
@@ -15,6 +16,7 @@ export interface GraphCanvasProps {
   visible: VisibleSet;
   selection: Selection;
   onSelect: (selection: Selection) => void;
+  layout: WebviewConfig['layout'];
   registerActions?: (actions: GraphActions) => void;
 }
 
@@ -82,7 +84,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       container: containerRef.current,
       elements: toElements(props.model),
       style: STYLE,
-      layout: { name: 'cose', animate: false },
+      layout: { name: props.layout, animate: false },
     });
     cyRef.current = cy;
 
@@ -96,7 +98,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
 
     props.registerActions?.({
       fit: () => cy.fit(undefined, 30),
-      resetLayout: () => cy.layout({ name: 'cose', animate: false }).run(),
+      resetLayout: () => cy.layout({ name: props.layout, animate: false }).run(),
       png: () => cy.png({ full: false, scale: 2, output: 'base64uri' }) as string,
     });
 
@@ -105,7 +107,7 @@ export function GraphCanvas(props: GraphCanvasProps): React.ReactElement {
       cyRef.current = null;
     };
     // Rebuild the graph when the underlying model changes.
-  }, [props.model]);
+  }, [props.model, props.layout]);
 
   React.useEffect(() => {
     const cy = cyRef.current;

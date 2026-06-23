@@ -94,6 +94,7 @@ export function App(props: AppProps): React.ReactElement {
             model={model}
             visible={visible}
             selection={state.selection}
+            layout={state.config.layout}
             onSelect={(selection) => dispatch({ type: 'select', selection })}
             registerActions={(actions) => {
               actionsRef.current = actions;

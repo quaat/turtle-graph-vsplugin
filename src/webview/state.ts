@@ -1,4 +1,4 @@
-import type { ExtensionToWebview } from '../protocol/messages';
+import type { ExtensionToWebview, WebviewConfig } from '../protocol/messages';
 import type { GraphModel, ParseError } from '../rdf/types';
 
 export type Selection = { kind: 'node' | 'edge'; id: string } | null;
@@ -13,6 +13,7 @@ export interface AppState {
   query: string;
   predicate: string;
   sourceFile?: string;
+  config: WebviewConfig;
 }
 
 export type AppAction =
@@ -27,6 +28,7 @@ export const initialState: AppState = {
   selection: null,
   query: '',
   predicate: '',
+  config: { maxInitialNodes: 500, layout: 'cose' },
 };
 
 export function reducer(state: AppState, action: AppAction): AppState {
@@ -52,6 +54,7 @@ export function reducer(state: AppState, action: AppAction): AppState {
         errors: [],
         selection: null,
         sourceFile: message.sourceFile,
+        config: message.config,
       };
     }
     case 'select':

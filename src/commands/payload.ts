@@ -56,7 +56,7 @@ export function buildPreview(input: PreviewInput): PreviewResult {
   return {
     message: buildGraphMessage(
       model,
-      { maxInitialNodes: input.config.maxInitialNodes },
+      { maxInitialNodes: input.config.maxInitialNodes, layout: input.config.layout },
       input.sourceFile,
     ),
     parsed,
